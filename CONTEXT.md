@@ -2,8 +2,8 @@
 
 A one-button remote that toggles play/pause on this Mac from an iPhone. The
 phone sends a token-authenticated request over the trusted local network; the
-Mac runs Apple's first-party Play/Pause action (via a saved macOS Shortcut),
-which toggles whatever currently owns audio.
+Mac calls the private MediaRemote framework (via `osascript` + JXA) to toggle
+whatever currently owns audio — no app-specific targeting, no Shortcuts dependency.
 
 ## Language
 
@@ -12,16 +12,13 @@ The whole system — the iPhone trigger, the Mac listener, and the helper that
 posts the media key.
 
 **Helper**:
-The mechanism the Server invokes to perform the toggle: the **Mac Shortcut**
-(below), run via the `shortcuts` CLI. Originally a compiled Swift binary
-(`playpause`) posting a synthetic media key — abandoned because macOS 26 ignores
-synthetic media events (see PLAN.md).
+The mechanism the Server invokes to perform the toggle: a JXA script executed
+via `osascript` that calls the private MediaRemote framework's
+`kMRTogglePlayPause` command. Originally a compiled Swift binary (`playpause`)
+posting a synthetic media key — abandoned because macOS 26 ignores synthetic
+media events. Then a macOS Shortcuts wrapper — replaced with the direct
+framework call to eliminate the Shortcuts dependency (see PLAN.md).
 _Avoid_: script, tool, binary.
-
-**Mac Shortcut**:
-The saved macOS Shortcut (default name `Play/Pause Media`) containing Apple's
-**Play/Pause** action. The Server runs it; it is the Helper. Distinct from the
-phone-side **Phone Shortcut**.
 
 **Server**:
 The always-on Mac-side listener that receives the trigger and runs the Helper.
@@ -56,7 +53,7 @@ The Latch's single action: flip between playing and paused. There is no explicit
 
 - A **Phone Shortcut** issues exactly one kind of **Trigger**
 - A **Trigger** is authorized by the **Token** and causes the **Server** to run the **Helper** once
-- The **Helper** (the **Mac Shortcut**) runs Apple's Play/Pause action, which macOS routes to the current **Now-playing session**
+- The **Helper** calls MediaRemote's toggle command, which macOS routes to the current **Now-playing session**
 - The action is always a **Toggle** — never a directed play or pause
 
 ## Example dialogue

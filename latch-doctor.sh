@@ -48,10 +48,9 @@ if [ -f "$DIR/token" ]; then
   if [ "$RC" -ne 0 ]; then
     echo "[FAIL] Local POST failed to connect (server down or wrong port)."
   elif [ "$CODE" = "204" ]; then
-    echo "[ok]   Local POST -> 204. Server, auth, and the shortcut ran."
+    echo "[ok]   Local POST -> 204. Server, auth, and media toggle worked."
   elif [ "$CODE" = "500" ]; then
-    echo "[FAIL] Local POST -> 500. 'shortcuts run' failed. Check the shortcut"
-    echo "       named in latch-server.mjs (SHORTCUT) exists: shortcuts list"
+    echo "[FAIL] Local POST -> 500. osascript (MediaRemote toggle) failed."
   elif [ "$CODE" = "401" ]; then
     echo "[FAIL] Local POST -> 401. Token mismatch between file and request."
   else
@@ -59,17 +58,6 @@ if [ -f "$DIR/token" ]; then
   fi
 else
   echo "[FAIL] No token file found at $DIR/token."
-fi
-
-# 5b. Does the configured shortcut exist?
-SC="$(sed -n "s/^const SHORTCUT *= *'\\([^']*\\)'.*/\\1/p" "$DIR/latch-server.mjs" | head -1)"
-if [ -n "$SC" ]; then
-  if shortcuts list 2>/dev/null | grep -qxF "$SC"; then
-    echo "[ok]   Shortcut \"$SC\" exists in your library."
-  else
-    echo "[FAIL] Shortcut \"$SC\" not found. Create it (one Play/Pause action)"
-    echo "       or fix the SHORTCUT name in latch-server.mjs."
-  fi
 fi
 
 # 6. The Shortcut URL.

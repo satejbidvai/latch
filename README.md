@@ -2,17 +2,16 @@
 
 A one-button remote that toggles **play/pause** on this Mac from an iPhone
 Shortcut. The phone sends a header-authenticated `POST` over the trusted local
-network; a tiny Node server runs the macOS `shortcuts` CLI, which invokes a saved
-Shortcut whose **Play/Pause** action toggles whatever owns the now-playing
-session (Music, Spotify, **browser video**, podcasts, the TV app).
+network; a tiny Node server calls the private `MediaRemote.framework` via
+`osascript` (JXA), which toggles whatever owns the now-playing session (Music,
+Spotify, **browser video**, podcasts, the TV app).
 
-> **Why a Shortcut and not a media-key helper?** The original plan posted a
-> synthetic `NX_KEYTYPE_PLAY` media key from a compiled Swift binary. On macOS 26
-> that no longer works: synthetic media events are ignored by the now-playing
-> system, and the private `MediaRemote` send-command API is entitlement-gated
-> (returns success, does nothing). Apple's first-party **Play/Pause** Shortcuts
-> action is properly entitled and works generically — so Latch shells out to it.
-> No Accessibility grant, no Swift, no TCC dance. See `PLAN.md` for the full trail.
+> **Evolution:** The original plan posted a synthetic `NX_KEYTYPE_PLAY` media key
+> from a compiled Swift binary — on macOS 26 that stopped working. Next, a saved
+> macOS Shortcut wrapping Apple's Play/Pause action — worked but added an
+> unnecessary dependency. Now, a direct JXA call to `MediaRemote.framework`'s
+> `kMRTogglePlayPause` via `osascript` — zero dependencies, system-wide, confirmed
+> working on macOS 15.4+ through 26.2. See `PLAN.md` for the full trail.
 
 > Threat model: **trusted home LAN only.** Plain HTTP, bound to `0.0.0.0`. The
 > server is **not** safe on untrusted Wi-Fi — unload the agent when roaming (see
@@ -33,24 +32,7 @@ echo "http://$(scutil --get LocalHostName).local:8787/playpause"
 
 ## One-time setup
 
-### 1. The macOS "Play/Pause Media" Shortcut
-
-The server runs a saved Shortcut named **`Play/Pause Media`** (set as `SHORTCUT`
-in `latch-server.mjs`). It must exist in your Shortcuts library and contain a
-single **Play/Pause** action.
-
-Check it's there:
-
-```sh
-shortcuts list | grep "Play/Pause Media"
-```
-
-If it's missing: open Shortcuts.app → new shortcut → add the **Play/Pause**
-action → name it exactly `Play/Pause Media` → save. (Or rename the `SHORTCUT`
-constant in `latch-server.mjs` to match a shortcut you already have, then restart
-the agent.)
-
-### 2. Build the iPhone Shortcut
+### 1. Build the iPhone Shortcut
 
 Shortcuts app → new shortcut → add **Get Contents of URL**:
 
@@ -62,7 +44,7 @@ Shortcuts app → new shortcut → add **Get Contents of URL**:
 - Name it (e.g. "⏯ Mac"), pick an icon, save. Add it to the Shortcuts widget
   stack for one-tap access.
 
-### 3. Test for real
+### 2. Test for real
 
 Play something, tap the widget tile — it should toggle. Tap again to confirm
 both directions.
@@ -72,14 +54,15 @@ both directions.
 - **`latch-server.mjs`**: zero-dependency Node stdlib HTTP server. One route,
   `POST /playpause`, gated by the `X-Latch-Token` header (plain compare — a
   128-bit random token makes timing attacks irrelevant). Bound to `0.0.0.0:8787`.
-  On a valid request it runs `shortcuts run "Play/Pause Media"`. Logs **method +
-  path + status only** — never the URL query, headers, or token.
+  On a valid request it calls `osascript -l JavaScript` with a JXA snippet that
+  loads `MediaRemote.framework` and sends `kMRTogglePlayPause` (command 2).
+  Logs **method + path + status only** — never the URL query, headers, or token.
 - **`com.latch.server.plist`**: LaunchAgent that autostarts the server at login
   via the stable `/opt/homebrew/bin/node` symlink, logging to `latch.log`.
 - **`latch-doctor.sh`**: diagnostics for silent failures.
 
 Responses: `204` success, `401` missing/wrong token, `404` otherwise, `500` if
-`shortcuts run` failed (usually: the shortcut doesn't exist).
+`osascript` failed.
 
 ## Managing the agent
 
@@ -119,12 +102,6 @@ POST, and that the configured shortcut exists. It never prints the token.
 
 ## Gotchas / troubleshooting
 
-- **Shortcut must exist and be named exactly:** if `shortcuts list` doesn't show
-  `Play/Pause Media`, the endpoint returns `500`. Create it or fix the `SHORTCUT`
-  name in `latch-server.mjs` and restart the agent.
-- **`shortcuts run` and stdin:** the CLI reads stdin until EOF, so a naive spawn
-  hangs forever. The server closes the child's stdin (`child.stdin.end()`) and
-  sets a 10 s timeout. If you rewrite the spawn, keep both.
 - <a id="roaming-is-unsafe"></a>**Roaming is unsafe:** the server binds
   `0.0.0.0`, so on untrusted Wi-Fi anyone who learns the token (or any website
   you browse, via a drive-by POST without the header) is a concern. Only run on

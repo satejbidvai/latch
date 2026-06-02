@@ -4,8 +4,18 @@ import { readFileSync } from 'node:fs';
 
 const DIR      = new URL('.', import.meta.url);
 const TOKEN    = readFileSync(new URL('token', DIR), 'utf8').trim();
-const SHORTCUT = 'Play/Pause Media';   // a saved macOS Shortcut; Apple's own
-                                       // entitled Play/Pause action does the work
+// JXA script that calls the private MediaRemote framework directly —
+// the same system-level API that Shortcuts' "Play/Pause Media" wraps.
+// Command 2 = kMRTogglePlayPause. Works with any app (Music, Spotify, browser, etc.).
+// Confirmed working on macOS 15.4+ through macOS 26.2.
+const JXA_TOGGLE = `
+ObjC.import('Foundation');
+const MR = $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/');
+MR.load;
+const ctrl = $.NSClassFromString('MRNowPlayingController').localRouteController;
+ctrl.sendCommandOptionsCompletion(2, $.NSDictionary.alloc.init, null);
+delay(0.5);
+`;
 
 createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
@@ -15,14 +25,12 @@ createServer((req, res) => {
     res.writeHead(401); return res.end();
   }
   if (req.method === 'POST' && pathname === '/playpause') {
-    // Fixed argv — the shortcut name is a constant, never request data.
-    const child = execFile('/usr/bin/shortcuts', ['run', SHORTCUT],
-      { timeout: 10000 }, (e) => {
+    execFile('/usr/bin/osascript', ['-l', 'JavaScript', '-e', JXA_TOGGLE],
+      { timeout: 5000 }, (e) => {
         const code = e ? 500 : 204;
         log(req.method, pathname, code);
         res.writeHead(code); res.end();
       });
-    child.stdin.end();   // `shortcuts run` reads stdin until EOF — close it or it hangs
     return;
   }
   log(req.method, pathname, 404);
