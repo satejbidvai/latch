@@ -20,7 +20,7 @@ Spotify, **browser video**, podcasts, the TV app).
 ## Your Shortcut URL
 
 ```sh
-echo "http://$(scutil --get LocalHostName).local:8787/playpause"
+echo "http://$(scutil --get LocalHostName).local:52824/playpause"
 ```
 
 This uses the Bonjour `.local` name (stable across DHCP), not a raw IP. Run the
@@ -50,7 +50,7 @@ both directions.
 
 - **`latch-server.mjs`**: zero-dependency Node stdlib HTTP server. One route,
   `POST /playpause`, gated by the `X-Latch-Token` header (plain compare; a
-  128-bit random token makes timing attacks irrelevant). Bound to `0.0.0.0:8787`.
+  128-bit random token makes timing attacks irrelevant). Bound to `0.0.0.0:52824`.
   On a valid request it calls `osascript -l JavaScript` with a JXA snippet that
   loads `MediaRemote.framework` and sends `kMRTogglePlayPause` (command 2).
   Logs method + path + status only. Never the URL query, headers, or token.
@@ -105,7 +105,7 @@ POST, and that the configured shortcut exists. It never prints the token.
   `launchctl bootout gui/$(id -u)/com.latch.server`.
 - **Hostname over IP:** use `<LocalHostName>.local`, not the raw IP. The IP can
   change with DHCP. If you rename the Mac, the URL changes; update the Shortcut.
-- **Port in use:** if `:8787` is taken, pick another port and update
+- **Port in use:** if `:52824` is taken, pick another port and update
   `latch-server.mjs`, the plist, and this README's URL.
 - **Leftover grants:** earlier iterations granted Accessibility to `playpause`
   and `/opt/homebrew/bin/node`. This approach needs neither. Remove both from

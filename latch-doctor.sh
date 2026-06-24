@@ -4,7 +4,7 @@
 set -u
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PORT=8787
+PORT=52824
 
 echo "== Latch doctor =="
 

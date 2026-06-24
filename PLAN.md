@@ -198,7 +198,7 @@ createServer((req, res) => {
   }
   log(req.method, pathname, 404);
   res.writeHead(404); res.end();
-}).listen(8787, '0.0.0.0', () => console.log('Latch ready on :8787'));
+}).listen(52824, '0.0.0.0', () => console.log('Latch ready on :52824'));
 
 // Never log the URL query, headers, or token — method + path + status only.
 function log(method, path, status) {
@@ -217,15 +217,15 @@ SRV=$!
 T=$(cat ~/Work/Personal/latch/token)
 
 # valid → 204
-curl -sS -o /dev/null -w 'valid: %{http_code}\n' -X POST -H "X-Latch-Token: $T"     http://localhost:8787/playpause
+curl -sS -o /dev/null -w 'valid: %{http_code}\n' -X POST -H "X-Latch-Token: $T"     http://localhost:52824/playpause
 # bad token → 401
-curl -sS -o /dev/null -w 'bad:   %{http_code}\n' -X POST -H "X-Latch-Token: wrong"  http://localhost:8787/playpause
+curl -sS -o /dev/null -w 'bad:   %{http_code}\n' -X POST -H "X-Latch-Token: wrong"  http://localhost:52824/playpause
 # missing token → 401
-curl -sS -o /dev/null -w 'none:  %{http_code}\n' -X POST                            http://localhost:8787/playpause
+curl -sS -o /dev/null -w 'none:  %{http_code}\n' -X POST                            http://localhost:52824/playpause
 # wrong path → 404
-curl -sS -o /dev/null -w 'path:  %{http_code}\n' -X POST -H "X-Latch-Token: $T"     http://localhost:8787/nope
+curl -sS -o /dev/null -w 'path:  %{http_code}\n' -X POST -H "X-Latch-Token: $T"     http://localhost:52824/nope
 # wrong method → 404
-curl -sS -o /dev/null -w 'get:   %{http_code}\n'         -H "X-Latch-Token: $T"     http://localhost:8787/playpause
+curl -sS -o /dev/null -w 'get:   %{http_code}\n'         -H "X-Latch-Token: $T"     http://localhost:52824/playpause
 
 kill $SRV
 ```
@@ -279,12 +279,12 @@ Create `latch-doctor.sh` — one command to run when a tap does nothing. It shou
 check and report, in plain language:
 
 - Is the Server process up? (`pgrep -f latch-server.mjs`)
-- Is port `8787` listening? (`lsof -iTCP:8787 -sTCP:LISTEN`)
+- Is port `52824` listening? (`lsof -iTCP:52824 -sTCP:LISTEN`)
 - Is the LaunchAgent loaded? (`launchctl list | grep com.latch.server`)
 - Any recent errors in `latch.log`? (tail the log — it contains no secrets)
 - Does a local POST get `204`/`401`/`500`? (`curl` with the token, to tell "grant
   missing → 500" apart from "server down → connection refused")
-- Print the current Shortcut URL: `http://$(scutil --get LocalHostName).local:8787/playpause`
+- Print the current Shortcut URL: `http://$(scutil --get LocalHostName).local:52824/playpause`
 
 Make it executable (`chmod +x latch-doctor.sh`). It must never print the token.
 
@@ -294,7 +294,7 @@ Write `README.md`. The Shortcut URL doesn't carry the token (it's a header), so
 compute the bare URL:
 
 ```
-echo "http://$(scutil --get LocalHostName).local:8787/playpause"
+echo "http://$(scutil --get LocalHostName).local:52824/playpause"
 ```
 
 The README must include: that resolved `.local` URL, the **header** setup for the
@@ -360,7 +360,7 @@ Then update the `X-Latch-Token` header value in the iPhone Shortcut.
 - **Hostname over IP:** use `<LocalHostName>.local`, not the raw IP — the IP can
   change with DHCP; the `.local` name is stable via Bonjour. If you rename the
   Mac, the URL changes — update the Shortcut.
-- **Port in use:** if `:8787` is taken, pick another port and update the Server,
+- **Port in use:** if `:52824` is taken, pick another port and update the Server,
   the plist, and the README URL.
 
 ---

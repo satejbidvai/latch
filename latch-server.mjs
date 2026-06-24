@@ -35,7 +35,7 @@ createServer((req, res) => {
   }
   log(req.method, pathname, 404);
   res.writeHead(404); res.end();
-}).listen(8787, '0.0.0.0', () => console.log('Latch ready on :8787'));
+}).listen(52824, '0.0.0.0', () => console.log('Latch ready on :52824'));
 
 // Never log the URL query, headers, or token — method + path + status only.
 function log(method, path, status) {
